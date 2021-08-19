@@ -15,4 +15,7 @@ public interface UserMapper {
 
     @Insert("insert into user(username, password) values(#{username}, #{password})")
     void create(User user);
+
+    @Select("select * from user where username = #{username}")
+    User findOne(String username);
 }

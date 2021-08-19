@@ -3,7 +3,7 @@ package com.example.service;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts; 
 import io.jsonwebtoken.SignatureAlgorithm; 
-import org.springframework.stereotype.Component; 
+import org.springframework.stereotype.Service; 
 import java.util.Date; 
 import java.util.HashMap; 
 import java.util.Map;
@@ -20,36 +20,48 @@ import java.util.Base64;
 import static io.jsonwebtoken.SignatureAlgorithm.HS256;
 
 
-
+@Service
 public class JWTManager {
  
-    public static String decodeJWTToken(String token){
-    try {
-        String secretKey = "YHDJKHJK@*$&*&@UJKD";
-        Base64.Decoder decoder = Base64.getDecoder();
+    private final String AccessKey = "AccessKey_SECRET";
+    private final Long expiredTime = 1000 * 60L * 60L * 24L * 365L; // 1년
 
-        String[] chunks = token.split("\\.");
+    ///////////////create////////////////////////////
 
-        String header = new String(decoder.decode(chunks[0]));
-        String payload = new String(decoder.decode(chunks[1]));
-        String tokenWithoutSignature = chunks[0] + "." + chunks[1];
-        String signature = chunks[2];
-        SignatureAlgorithm sa = HS256;
-        SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getBytes(), sa.getJcaName());
+    public String CreateToken(String username) {
+        Date now = new Date();
 
-        DefaultJwtSignatureValidator validator = new DefaultJwtSignatureValidator(sa, secretKeySpec);
-        
-      
-        JSONParser parser = new JSONParser();
-        Object obj = parser.parse(payload);
-        JSONObject jsonObj = (JSONObject)obj;
-        String oauthid = (String) jsonObj.get("oauthid");
-        
-        return oauthid; 
-       } catch (Exception e) {
-            return "error";   
-       // e.printStackTrace();
+        return Jwts.builder()
+            .setSubject(username)
+            .setHeader(createHeader())
+            .setClaims(createClaims(username))
+            .setExpiration(new Date(now.getTime() + expiredTime))
+            .signWith(SignatureAlgorithm.HS256, AccessKey)
+            .compact();
+    }
 
-       }
+    private Map<String, Object> createHeader() {
+        Map<String, Object> header = new HashMap<>();
+        header.put("typ", "JWT");
+        header.put("alg", "HS256");
+        header.put("regDate", System.currentTimeMillis());
+        return header;
+    }
+
+    private Map<String, Object> createClaims(String username) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("username", username);
+        return claims;
+    }
+
+    /////////////////decoded////////////////////////
+
+    private Claims getClaims(String token) {
+        //return Jwts.parser().setSigningKey(Base64.getEncoder().encodeToString(AccessKey.getBytes())).parseClaimsJws(token).getBody();
+        return Jwts.parser().setSigningKey(AccessKey).parseClaimsJws(token).getBody();
+    }
+
+    public String VerifyToken(String token) {
+        return (String) getClaims(token).get("username");
     }
 }
